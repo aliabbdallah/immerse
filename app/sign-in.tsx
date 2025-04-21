@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, useTheme } from 'react-native-paper';
+import { TextInput, Button, Text, useTheme as usePaperTheme } from 'react-native-paper';
 import { Link, router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme as useAppTheme } from '../contexts/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -10,7 +12,8 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
-  const { colors } = useTheme();
+  const paperTheme = usePaperTheme();
+  const { theme } = useAppTheme();
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -32,63 +35,105 @@ export default function SignIn() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <Text variant="headlineMedium" style={styles.title}>
-          Welcome Back
-        </Text>
-        
-        {error && (
-          <Text style={[styles.error, { color: colors.error }]}>
-            {error}
-          </Text>
-        )}
-
-        <TextInput
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          style={styles.input}
-        />
-
-        <TextInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          style={styles.input}
-        />
-
-        <Button
-          mode="contained"
-          onPress={handleSignIn}
-          loading={loading}
-          disabled={loading}
-          style={styles.button}
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
         >
-          Sign In
-        </Button>
+          <View style={[styles.content, { backgroundColor: theme.colors.background }]}>
+            <Text 
+              variant="headlineMedium" 
+              style={[styles.title, { color: theme.colors.onBackground }]}
+            >
+              Welcome Back
+            </Text>
+            
+            {error && (
+              <Text style={[styles.error, { color: theme.colors.error }]}>
+                {error}
+              </Text>
+            )}
 
-        <View style={styles.links}>
-          <Link href="/sign-up" asChild>
-            <Button mode="text">Create Account</Button>
-          </Link>
-          <Link href="/reset-password" asChild>
-            <Button mode="text">Forgot Password?</Button>
-          </Link>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            <TextInput
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              style={[styles.input, { backgroundColor: theme.colors.surface }]}
+              mode="outlined"
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  background: theme.colors.surface,
+                  text: theme.colors.onSurface,
+                  placeholder: theme.colors.outline,
+                }
+              }}
+            />
+
+            <TextInput
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              style={[styles.input, { backgroundColor: theme.colors.surface }]}
+              mode="outlined"
+              theme={{
+                colors: {
+                  primary: theme.colors.primary,
+                  background: theme.colors.surface,
+                  text: theme.colors.onSurface,
+                  placeholder: theme.colors.outline,
+                }
+              }}
+            />
+
+            <Button
+              mode="contained"
+              onPress={handleSignIn}
+              loading={loading}
+              disabled={loading}
+              style={[styles.button, { backgroundColor: theme.colors.primary }]}
+              labelStyle={{ color: theme.colors.onPrimary }}
+            >
+              Sign In
+            </Button>
+
+            <View style={styles.links}>
+              <Link href="/sign-up" asChild>
+                <Button 
+                  mode="text"
+                  textColor={theme.colors.primary}
+                >
+                  Create Account
+                </Button>
+              </Link>
+              <Link href="/reset-password" asChild>
+                <Button 
+                  mode="text"
+                  textColor={theme.colors.primary}
+                >
+                  Forgot Password?
+                </Button>
+              </Link>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   content: {

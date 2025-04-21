@@ -6,9 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme as useAppTheme } from '../../contexts/ThemeContext';
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack } from 'expo-router';
 
 export default function Profile() {
-  const theme = useTheme();
+  const paperTheme = useTheme();
   const { toggleTheme, theme: appTheme } = useAppTheme();
   const { user, signOut } = useAuth();
 
@@ -18,116 +20,149 @@ export default function Profile() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar style={theme.dark ? 'light' : 'dark'} />
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text variant="headlineLarge" style={[styles.title, { color: theme.colors.onBackground }]}>
-            Profile
-          </Text>
-        </View>
-
-        <Surface style={[styles.profileCard, { backgroundColor: theme.colors.elevation.level2 }]} elevation={1}>
-          <View style={styles.profileInfo}>
-            <Image
-              source={require('../../assets/images/avatar-placeholder.png')}
-              style={styles.avatar}
-            />
-            <View style={styles.profileText}>
-              <Text variant="titleLarge" style={[styles.name, { color: theme.colors.onSurface }]}>
-                {user?.email?.split('@')[0] || 'User'}
-              </Text>
-              <Text variant="bodyMedium" style={[styles.email, { color: theme.colors.onSurfaceVariant }]}>
-                {user?.email || 'user@example.com'}
-              </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: appTheme.colors.background }]} edges={['top']}>
+      <StatusBar style={appTheme.dark ? 'light' : 'dark'} />
+      <Stack.Screen 
+        options={{
+          title: 'Profile',
+          headerStyle: { backgroundColor: appTheme.colors.background },
+          headerTitleStyle: { color: appTheme.colors.onBackground },
+        }} 
+      />
+      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.profileSection}>
+            <View style={styles.profileInfo}>
+              <Image
+                source={require('../../assets/images/avatar-placeholder.png')}
+                style={styles.avatar}
+              />
+              <View style={styles.profileText}>
+                <Text style={[styles.name, { color: appTheme.colors.onBackground }]}>
+                  {user?.email?.split('@')[0] || 'User'}
+                </Text>
+                <Text style={[styles.email, { color: appTheme.colors.outline }]}>
+                  {user?.email || 'user@example.com'}
+                </Text>
+              </View>
             </View>
           </View>
-        </Surface>
 
-        <Surface style={[styles.settingsCard, { backgroundColor: theme.colors.elevation.level2 }]} elevation={1}>
-          <List.Section>
-            <List.Subheader style={{ color: theme.colors.onSurfaceVariant }}>Settings</List.Subheader>
-            <List.Item
-              title="Dark Mode"
-              left={props => <List.Icon {...props} icon="theme-light-dark" />}
-              right={() => (
-                <Switch
-                  value={appTheme.dark}
-                  onValueChange={toggleTheme}
-                  color={theme.colors.primary}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: appTheme.colors.outline }]}>Settings</Text>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.colors.outline }]}>
+              <View style={styles.settingLeft}>
+                <MaterialCommunityIcons 
+                  name="theme-light-dark" 
+                  size={24} 
+                  color={appTheme.colors.outline} 
                 />
-              )}
-            />
-            <List.Item
-              title="Notifications"
-              left={props => <List.Icon {...props} icon="bell-outline" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => {}}
-            />
-            <List.Item
-              title="Reading Preferences"
-              left={props => <List.Icon {...props} icon="book-outline" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => {}}
-            />
-          </List.Section>
-        </Surface>
+                <Text style={[styles.settingText, { color: appTheme.colors.onBackground }]}>Dark Mode</Text>
+              </View>
+              <Switch
+                value={appTheme.dark}
+                onValueChange={toggleTheme}
+                color={appTheme.colors.primary}
+              />
+            </View>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.colors.outline }]}>
+              <View style={styles.settingLeft}>
+                <MaterialCommunityIcons 
+                  name="bell-outline" 
+                  size={24} 
+                  color={appTheme.colors.outline} 
+                />
+                <Text style={[styles.settingText, { color: appTheme.colors.onBackground }]}>Notifications</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={24} 
+                color={appTheme.colors.outline} 
+              />
+            </View>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.colors.outline }]}>
+              <View style={styles.settingLeft}>
+                <MaterialCommunityIcons 
+                  name="book-outline" 
+                  size={24} 
+                  color={appTheme.colors.outline} 
+                />
+                <Text style={[styles.settingText, { color: appTheme.colors.onBackground }]}>Reading Preferences</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={24} 
+                color={appTheme.colors.outline} 
+              />
+            </View>
+          </View>
 
-        <Surface style={[styles.settingsCard, { backgroundColor: theme.colors.elevation.level2 }]} elevation={1}>
-          <List.Section>
-            <List.Subheader style={{ color: theme.colors.onSurfaceVariant }}>Account</List.Subheader>
-            <List.Item
-              title="Privacy"
-              left={props => <List.Icon {...props} icon="shield-outline" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => {}}
-            />
-            <List.Item
-              title="Help & Support"
-              left={props => <List.Icon {...props} icon="help-circle-outline" />}
-              right={props => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => {}}
-            />
-          </List.Section>
-        </Surface>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: appTheme.colors.outline }]}>Account</Text>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.colors.outline }]}>
+              <View style={styles.settingLeft}>
+                <MaterialCommunityIcons 
+                  name="shield-outline" 
+                  size={24} 
+                  color={appTheme.colors.outline} 
+                />
+                <Text style={[styles.settingText, { color: appTheme.colors.onBackground }]}>Privacy</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={24} 
+                color={appTheme.colors.outline} 
+              />
+            </View>
+            <View style={[styles.settingItem, { borderBottomColor: appTheme.colors.outline }]}>
+              <View style={styles.settingLeft}>
+                <MaterialCommunityIcons 
+                  name="help-circle-outline" 
+                  size={24} 
+                  color={appTheme.colors.outline} 
+                />
+                <Text style={[styles.settingText, { color: appTheme.colors.onBackground }]}>Help & Support</Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={24} 
+                color={appTheme.colors.outline} 
+              />
+            </View>
+          </View>
 
-        <Button
-          mode="outlined"
-          onPress={handleSignOut}
-          style={[styles.signOutButton, { borderColor: theme.colors.error }]}
-          textColor={theme.colors.error}
-        >
-          Sign Out
-        </Button>
-      </ScrollView>
-    </View>
+          <Button
+            mode="outlined"
+            onPress={handleSignOut}
+            style={styles.signOutButton}
+            textColor={appTheme.colors.error}
+            buttonColor="transparent"
+          >
+            Sign Out
+          </Button>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
-  scrollView: {
+  content: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: Platform.OS === 'ios' ? 34 : 30,
-    fontWeight: '700',
-  },
-  profileCard: {
-    marginHorizontal: 20,
+  profileSection: {
+    paddingHorizontal: 16,
     marginBottom: 24,
-    borderRadius: 16,
-    padding: 16,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -143,20 +178,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
+    fontSize: 24,
     fontWeight: '600',
     marginBottom: 4,
   },
   email: {
     fontSize: 14,
   },
-  settingsCard: {
-    marginHorizontal: 20,
+  section: {
+    paddingHorizontal: 16,
     marginBottom: 24,
-    borderRadius: 16,
-    overflow: 'hidden',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingText: {
+    fontSize: 16,
+    marginLeft: 12,
   },
   signOutButton: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 32,
   },

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS reading_content (
     title TEXT NOT NULL,
     url TEXT NOT NULL,
     content TEXT NOT NULL,
+    description TEXT,
     priority INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL

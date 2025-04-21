@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, IconButton, Button, useTheme, FAB } from 'react-native-paper';
+import { View, StyleSheet, FlatList } from 'react-native';
+import { Text, IconButton, Button, useTheme, FAB, ActivityIndicator } from 'react-native-paper';
 import { router, useLocalSearchParams } from 'expo-router';
 import { FocusReader } from '../../components/FocusReader';
 import { getArticle, updateContent } from '../../services/readingContent';
 import { useAuth } from '../../contexts/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ArticleView() {
   const theme = useTheme();
@@ -35,25 +36,37 @@ export default function ArticleView() {
   };
 
   const handleProgressUpdate = async (progress: number) => {
-    if (!session?.user?.id || !id) return;
-
-    try {
-      await updateContent(id as string, {
-        progress: progress,
-      });
-    } catch (error) {
-      console.error('Error updating progress:', error);
-    }
+    // Just log the progress for now until you add the progress column
+    console.log('Reading progress:', progress);
   };
 
   const handleExitFocusMode = () => {
     setIsFocusMode(false);
   };
 
+  const chunkContent = (content: string) => {
+    const chunkSize = 1000; // Number of characters per chunk
+    const chunks = [];
+    for (let i = 0; i < content.length; i += chunkSize) {
+      chunks.push(content.slice(i, i + chunkSize));
+    }
+    return chunks;
+  };
+
+  const renderContentItem = ({ item }: { item: string }) => (
+    <Text 
+      variant="bodyLarge" 
+      style={[styles.articleText, { color: theme.colors.onSurface }]}
+    >
+      {item}
+    </Text>
+  );
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={{ marginTop: 16 }}>Loading article...</Text>
       </View>
     );
   }
@@ -82,7 +95,7 @@ export default function ArticleView() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <IconButton
           icon="arrow-left"
@@ -96,10 +109,15 @@ export default function ArticleView() {
           {article.estimated_read_time} mins read
         </Text>
       </View>
-      <View style={styles.content}>
-        <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
-          {article.content}
-        </Text>
+      
+      <View style={styles.contentContainer}>
+        <FlatList
+          data={chunkContent(article.content)}
+          renderItem={renderContentItem}
+          keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={true}
+        />
       </View>
       <FAB
         icon="book-open-variant"
@@ -107,7 +125,7 @@ export default function ArticleView() {
         style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         onPress={() => setIsFocusMode(true)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -131,9 +149,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
   },
-  content: {
+  contentContainer: {
     flex: 1,
+  },
+  scrollContent: {
     padding: 16,
+    paddingBottom: 80,
+  },
+  articleText: {
+    lineHeight: 24,
+    textAlign: 'justify',
   },
   fab: {
     position: 'absolute',
@@ -141,4 +166,4 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-}); 
+});

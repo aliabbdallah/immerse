@@ -1,19 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { Text, Card, Button, useTheme, IconButton, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import { Text, Card, Button, IconButton, useTheme } from 'react-native-paper';
 import { router } from 'expo-router';
-import { getReadingList } from '../services/readingContent';
 import { useAuth } from '../contexts/AuthContext';
-import type { Database } from '../types/supabase';
+import { getReadingList, deleteContent } from '../services/readingContent';
+import { ReadingContent } from '../services/readingContent';
 
-type ReadingContent = Database['public']['Tables']['reading_content']['Row'] & {
-  priority: "High" | "Medium" | "Low";
-  tags: string[];
-  is_completed: boolean;
-  completed_at: string;
-};
+interface ReadingListProps {
+  searchQuery?: string;
+}
 
-export function ReadingList() {
+export function ReadingList({ searchQuery = '' }: ReadingListProps) {
   const theme = useTheme();
   const { session } = useAuth();
   const [items, setItems] = useState<ReadingContent[]>([]);
@@ -26,7 +23,14 @@ export function ReadingList() {
     
     try {
       const data = await getReadingList(session.user.id);
-      setItems(data);
+      // Filter items based on search query if provided
+      const filteredData = searchQuery
+        ? data.filter(item => 
+            item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+          )
+        : data;
+      setItems(filteredData);
       setError(null);
     } catch (error) {
       console.error('Error loading reading list:', error);
@@ -39,7 +43,7 @@ export function ReadingList() {
 
   useEffect(() => {
     loadReadingList();
-  }, [session?.user]);
+  }, [session?.user, searchQuery]); // Add searchQuery as a dependency
 
   const handleReadArticle = (id: string) => {
     router.push(`/article/${id}`);
@@ -52,6 +56,19 @@ export function ReadingList() {
   const handleRefresh = () => {
     setRefreshing(true);
     loadReadingList();
+  };
+
+  const handleDeleteArticle = async (id: string) => {
+    if (!session?.user) return;
+    
+    try {
+      await deleteContent(id, session.user.id);
+      // Remove the deleted item from the local state
+      setItems(items.filter(item => item.id !== id));
+    } catch (error) {
+      console.error('Error deleting article:', error);
+      setError('Failed to delete article');
+    }
   };
 
   if (loading) {
@@ -97,7 +114,7 @@ export function ReadingList() {
         {items.length === 0 ? (
           <View style={styles.emptyState}>
             <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
-              No articles yet. Add some content to get started!
+              {searchQuery ? 'No articles found matching your search.' : 'No articles yet. Add some content to get started!'}
             </Text>
           </View>
         ) : (
@@ -129,6 +146,11 @@ export function ReadingList() {
               </Card.Content>
               <Card.Actions>
                 <Button onPress={() => handleReadArticle(item.id)}>Read Now</Button>
+                <IconButton
+                  icon="delete"
+                  iconColor={theme.colors.error}
+                  onPress={() => handleDeleteArticle(item.id)}
+                />
               </Card.Actions>
             </Card>
           ))
@@ -141,7 +163,6 @@ export function ReadingList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
   },
   centerContent: {
     justifyContent: 'center',
@@ -151,15 +172,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
   addButton: {
-    marginLeft: 8,
+    margin: 0,
   },
   scrollView: {
     flex: 1,
   },
+  emptyState: {
+    padding: 16,
+    alignItems: 'center',
+  },
   card: {
+    marginHorizontal: 16,
     marginBottom: 16,
   },
   description: {
@@ -170,11 +197,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 32,
   },
 }); 

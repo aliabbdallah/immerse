@@ -18,32 +18,48 @@ export interface ReadingContent {
 }
 
 export async function addContent(url: string, userId: string): Promise<ReadingContent> {
+  console.log('Starting content addition for URL:', url);
+  
   const scrapedContent = await scrapeContent(url);
+  console.log('Scraped content:', {
+    title: scrapedContent.title,
+    contentLength: scrapedContent.content?.length,
+    hasDescription: !!scrapedContent.description,
+    estimatedReadTime: scrapedContent.estimatedReadTime
+  });
+  
+  const insertData = {
+    title: scrapedContent.title || 'Untitled Article',
+    content: scrapedContent.content || '',
+    url: url,
+    user_id: userId,
+    priority: 1 // Default to Medium priority (0: Low, 1: Medium, 2: High)
+  };
+  console.log('Data being inserted into database:', insertData);
   
   const { data, error } = await supabase
     .from('reading_content')
-    .insert([
-      {
-        url,
-        title: scrapedContent.title,
-        description: scrapedContent.description,
-        content: scrapedContent.content,
-        estimated_read_time: scrapedContent.estimatedReadTime,
-        user_id: userId,
-        progress: 0,
-      },
-    ])
+    .insert([insertData])
     .select()
     .single();
 
   if (error) {
+    console.error('Database error:', error);
     throw new Error(`Failed to add content: ${error.message}`);
   }
+
+  console.log('Successfully added content:', {
+    id: data.id,
+    title: data.title,
+    contentLength: data.content?.length
+  });
 
   return data;
 }
 
 export async function getReadingList(userId: string): Promise<ReadingContent[]> {
+  console.log('Fetching reading list for user:', userId);
+  
   const { data, error } = await supabase
     .from('reading_content')
     .select('*')
@@ -51,8 +67,16 @@ export async function getReadingList(userId: string): Promise<ReadingContent[]> 
     .order('created_at', { ascending: false });
 
   if (error) {
+    console.error('Error fetching reading list:', error);
     throw new Error(`Failed to fetch reading list: ${error.message}`);
   }
+
+  console.log('Retrieved reading list items:', data?.map(item => ({
+    id: item.id,
+    title: item.title,
+    contentLength: item.content?.length,
+    hasDescription: !!item.description
+  })));
 
   return data || [];
 }

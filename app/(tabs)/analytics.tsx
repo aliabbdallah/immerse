@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Text, Card, useTheme, ProgressBar, List, IconButton } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Platform } from 'react-native';
+import { Text, Card, useTheme, ProgressBar, List, IconButton, Surface } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserSessions } from '../../services/readingSessions';
 import { getReadingList } from '../../services/readingContent';
 import { ReadingSession } from '../../services/readingSessions';
 import { ReadingContent } from '../../services/readingContent';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Stack } from 'expo-router';
+import { useTheme as useAppTheme } from '../../contexts/ThemeContext';
 
 export default function AnalyticsScreen() {
-  const theme = useTheme();
+  const paperTheme = useTheme();
+  const { theme } = useAppTheme();
   const { session } = useAuth();
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [readingList, setReadingList] = useState<ReadingContent[]>([]);
@@ -104,102 +109,145 @@ export default function AnalyticsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text>Loading analytics...</Text>
+      <View style={[styles.container, styles.centerContent, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.loadingText, { color: theme.colors.onBackground }]}>Loading analytics...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.header}>
-        <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>
-          Reading Analytics
-        </Text>
-        <IconButton
-          icon="refresh"
-          onPress={loadData}
-        />
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <StatusBar style={theme.dark ? 'light' : 'dark'} />
+      <Stack.Screen 
+        options={{
+          title: 'Analytics',
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTitleStyle: { color: theme.colors.onBackground },
+        }} 
+      />
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: theme.colors.onBackground }]}>Reading Analytics</Text>
+            <IconButton
+              icon="refresh"
+              iconColor={theme.colors.onBackground}
+              onPress={loadData}
+            />
+          </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium">Total Reading Time</Text>
-          <Text variant="headlineLarge" style={styles.statValue}>
-            {formatTime(calculateTotalReadingTime())}
-          </Text>
-        </Card.Content>
-      </Card>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.outline }]}>Total Reading Time</Text>
+            <Text style={[styles.statValue, { color: theme.colors.onBackground }]}>
+              {formatTime(calculateTotalReadingTime())}
+            </Text>
+          </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium">Average Session Time</Text>
-          <Text variant="headlineLarge" style={styles.statValue}>
-            {formatTime(calculateAverageSessionTime())}
-          </Text>
-        </Card.Content>
-      </Card>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.outline }]}>Average Session Time</Text>
+            <Text style={[styles.statValue, { color: theme.colors.onBackground }]}>
+              {formatTime(calculateAverageSessionTime())}
+            </Text>
+          </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium">Most Read Content</Text>
-          <List.Section>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.outline }]}>Most Read Content</Text>
             {getMostReadContent().map((content, index) => (
-              <List.Item
-                key={index}
-                title={content.title}
-                description={`${content.sessions} sessions • ${formatTime(content.totalTime)}`}
-                left={props => <List.Icon {...props} icon="book" />}
-              />
+              <View key={index} style={styles.contentItem}>
+                <Text style={[styles.contentTitle, { color: theme.colors.onBackground }]}>{content.title}</Text>
+                <Text style={[styles.contentMeta, { color: theme.colors.outline }]}>
+                  {content.sessions} sessions • {formatTime(content.totalTime)}
+                </Text>
+              </View>
             ))}
-          </List.Section>
-        </Card.Content>
-      </Card>
+          </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium">Reading Progress</Text>
-          {readingList.map(content => (
-            <View key={content.id} style={styles.progressItem}>
-              <Text variant="bodyMedium">{content.title}</Text>
-              <ProgressBar
-                progress={(content.progress || 0) / 100}
-                style={styles.progressBar}
-              />
-              <Text variant="bodySmall">{Math.round(content.progress || 0)}%</Text>
-            </View>
-          ))}
-        </Card.Content>
-      </Card>
-    </ScrollView>
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.outline }]}>Reading Progress</Text>
+            {readingList.map(content => (
+              <View key={content.id} style={styles.progressItem}>
+                <Text style={[styles.contentTitle, { color: theme.colors.onBackground }]}>{content.title}</Text>
+                <ProgressBar
+                  progress={(content.progress || 0) / 100}
+                  style={styles.progressBar}
+                  color={theme.colors.primary}
+                />
+                <Text style={[styles.progressText, { color: theme.colors.outline }]}>
+                  {Math.round(content.progress || 0)}%
+                </Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    padding: 16,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
-  card: {
-    marginBottom: 16,
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  section: {
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    marginBottom: 12,
   },
   statValue: {
-    marginTop: 8,
+    fontSize: 32,
+    fontWeight: '600',
+  },
+  contentItem: {
+    marginBottom: 16,
+  },
+  contentTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  contentMeta: {
+    fontSize: 14,
   },
   progressItem: {
-    marginVertical: 8,
+    marginBottom: 16,
   },
   progressBar: {
-    marginVertical: 4,
+    height: 4,
+    marginVertical: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    textAlign: 'right',
+  },
+  loadingText: {
+    fontSize: 16,
   },
 }); 

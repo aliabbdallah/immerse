@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Platform } from 'react-native';
-import { TextInput, Button, Text, useTheme, HelperText } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Platform, SafeAreaView, KeyboardAvoidingView } from 'react-native';
+import { TextInput, Button, Text, useTheme, HelperText, ActivityIndicator, Card, IconButton } from 'react-native-paper';
 import { router } from 'expo-router';
 import { scrapeContent } from '../services/contentScraper';
 import { addContent } from '../services/readingContent';
@@ -12,6 +12,12 @@ export default function AddContent() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<{
+    title: string;
+    description: string | null;
+    estimatedReadTime: number;
+    author: string | null;
+  } | null>(null);
 
   const validateUrl = (url: string): boolean => {
     try {
@@ -22,7 +28,7 @@ export default function AddContent() {
     }
   };
 
-  const handleAddContent = async () => {
+  const handlePreview = async () => {
     if (!session?.user) return;
     
     // Validate URL format
@@ -38,17 +44,36 @@ export default function AddContent() {
       // Scrape the content from the URL
       const scrapedContent = await scrapeContent(url);
       
-      // Add the content to the database
-      await addContent({
+      // Set preview data
+      setPreviewData({
         title: scrapedContent.title,
         description: scrapedContent.description,
-        content: scrapedContent.content,
-        url: url,
-        estimated_read_time: scrapedContent.estimatedReadTime,
-        user_id: session.user.id,
-        priority: 'Medium',
-        is_completed: false,
+        estimatedReadTime: scrapedContent.estimatedReadTime,
+        author: scrapedContent.author
       });
+    } catch (error) {
+      console.error('Error previewing content:', error);
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('Failed to preview content. Please check the URL and try again.');
+      }
+      setPreviewData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddContent = async () => {
+    if (!session?.user || !previewData) return;
+    
+    setLoading(true);
+    
+    try {
+      // Scrape and add the content to the database
+      const scrapedContent = await scrapeContent(url);
+      
+      await addContent(url, session.user.id);
 
       router.back();
     } catch (error) {
@@ -64,58 +89,122 @@ export default function AddContent() {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-    >
-      <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
-        Add New Content
-      </Text>
-      <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurface }]}>
-        Enter the URL of the article or content you want to read
-      </Text>
-      <TextInput
-        mode="outlined"
-        label="URL"
-        value={url}
-        onChangeText={(text) => {
-          setUrl(text);
-          setError(null);
-        }}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        style={styles.input}
-        error={!!error}
-        placeholder="https://example.com"
-        placeholderTextColor={theme.colors.outline}
-      />
-      {error && (
-        <HelperText type="error" visible={!!error} style={styles.helperText}>
-          {error}
-        </HelperText>
-      )}
-      <View style={styles.buttonContainer}>
-        <Button
-          mode="outlined"
-          onPress={() => router.back()}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoid}
+      >
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
         >
-          Cancel
-        </Button>
-        <Button
-          mode="contained"
-          onPress={handleAddContent}
-          loading={loading}
-          disabled={!url.trim() || loading}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-        >
-          Add Content
-        </Button>
-      </View>
-    </ScrollView>
+          <View style={styles.header}>
+            <IconButton
+              icon="arrow-left"
+              size={24}
+              onPress={() => router.back()}
+            />
+            <Text variant="headlineMedium" style={[styles.title, { color: theme.colors.primary }]}>
+              Add New Content
+            </Text>
+          </View>
+
+          <Text variant="bodyMedium" style={[styles.subtitle, { color: theme.colors.onSurface }]}>
+            Enter the URL of the article you want to read
+          </Text>
+          
+          <TextInput
+            mode="outlined"
+            label="URL"
+            value={url}
+            onChangeText={(text) => {
+              setUrl(text);
+              setError(null);
+              // Clear preview when URL changes
+              if (previewData) setPreviewData(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            style={styles.input}
+            error={!!error}
+            placeholder="https://example.com/article"
+            placeholderTextColor={theme.colors.outline}
+            right={<TextInput.Icon icon="web" onPress={handlePreview} />}
+          />
+          
+          {error && (
+            <HelperText type="error" visible={!!error} style={styles.helperText}>
+              {error}
+            </HelperText>
+          )}
+          
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={{ marginTop: 12 }}>
+                {previewData ? 'Adding to your reading list...' : 'Fetching article preview...'}
+              </Text>
+            </View>
+          )}
+          
+          {previewData && !loading && (
+            <Card style={styles.previewCard}>
+              <Card.Content>
+                <Text variant="titleLarge" style={styles.previewTitle}>{previewData.title}</Text>
+                
+                {previewData.author && (
+                  <Text variant="bodyMedium" style={styles.previewAuthor}>
+                    By {previewData.author}
+                  </Text>
+                )}
+                
+                {previewData.description && (
+                  <Text variant="bodyMedium" style={styles.previewDescription}>
+                    {previewData.description}
+                  </Text>
+                )}
+                
+                <Text variant="bodySmall" style={styles.previewReadTime}>
+                  {previewData.estimatedReadTime} min read
+                </Text>
+              </Card.Content>
+              <Card.Actions>
+                <Button 
+                  mode="contained" 
+                  onPress={handleAddContent}
+                  style={styles.saveButton}
+                >
+                  Save to Reading List
+                </Button>
+              </Card.Actions>
+            </Card>
+          )}
+          
+          {!previewData && !loading && (
+            <View style={styles.buttonContainer}>
+              <Button
+                mode="outlined"
+                onPress={() => router.back()}
+                style={styles.button}
+                contentStyle={styles.buttonContent}
+              >
+                Cancel
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handlePreview}
+                disabled={!url.trim()}
+                style={styles.button}
+                contentStyle={styles.buttonContent}
+              >
+                Preview Article
+              </Button>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -123,13 +212,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  keyboardAvoid: {
+    flex: 1,
+  },
   contentContainer: {
     padding: 20,
+    flexGrow: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   title: {
-    marginBottom: 12,
     fontSize: Platform.OS === 'ios' ? 24 : 22,
     fontWeight: '600',
+    flex: 1,
   },
   subtitle: {
     marginBottom: 16,
@@ -157,4 +255,30 @@ const styles = StyleSheet.create({
     height: 44,
     minWidth: 44,
   },
-}); 
+  loadingContainer: {
+    marginTop: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewCard: {
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  previewTitle: {
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  previewAuthor: {
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  previewDescription: {
+    marginBottom: 12,
+  },
+  previewReadTime: {
+    opacity: 0.7,
+  },
+  saveButton: {
+    marginTop: 8,
+  }
+});
